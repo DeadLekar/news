@@ -77,8 +77,8 @@ class Text:
                 self.source = 'rbc'
             self.size = len(self.txt)
 
-
-    def remove_digits(self, txt):
+    @staticmethod
+    def remove_digits(txt):
         """
         removes digits, quants and dates from txt
         :return: None
@@ -91,7 +91,8 @@ class Text:
         for regex in regex_arr:
             txt = re.sub(regex, '', txt)
         return txt
-    def text_to_vector(self,l_obj=None):
+
+    def text_to_vector(self, l_obj=None):
         """
         clears text and fill index dictionary with word-count% format
         :return: None
@@ -139,11 +140,13 @@ class Text:
         txt_arr = txt.split(' ')
         txt_arr = self._remove_empty_items(txt_arr)
         return txt_arr
+
     def _remove_empty_items(self, arr):
         new_arr = []
         for item in arr:
             if len(item) != 0: new_arr.append(item)
         return new_arr
+
     def _remove_prepositions(self, arr):
         """
         removes preposition items from arr
@@ -155,16 +158,19 @@ class Text:
             if not self._is_prep(word):
                 new_arr.append(word)
         return new_arr
+
     def _get_date_time(self):
         """
         gets public_date and public_time from text
         :return:
         """
+
     def _get_source(self):
         """
         gets agency name from text
         :return:
         """
+
     def _is_prep(self, word):
         """
         detects if word is a preposition
@@ -175,12 +181,15 @@ class Text:
         prep_rows = c.execute("SELECT prep FROM preps WHERE prep='{}'".format(word)).fetchone()
         return (prep_rows != None)
 
+
 class Distance:
     MIN_MINVECT_SHARE = 0.5
+
     def count_cosine_1(self, vector1, vector2):
         """
         counts classic cosine distance between texts with common vector space
-        :param o_text1, o_text2: Text objects
+        :param vector2: Text object
+        :param vector1: Text object
         :return: cosine distance
         """
         # create common vector space
@@ -278,71 +287,39 @@ class TextRange:
         # get the closest text from other texts
 
 
-def get_companies():
-    suffixes = ['Inc.', 'Ltd.','AG', 'Holdings', 'International', 'NV']
-    p = re.compile(r'([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*(?=\s+(Inc\.|AG|International|Holdings|NV)))')
-    path = 'C:/Kovalenko/news/agences_texts/news1/'
-    folders = os.listdir(path)
-    total_names = {}
-    for folder in folders:
-        print(folder)
-        files = os.listdir(path + '/' + folder)
-        for file in files:
-            cur_names = []
-            f = open(path + folder + '/' + file, 'r', encoding='utf-8')
-            lines = f.readlines()
-            if 'loomberg' in lines[0]:
-                for line in lines:
-                    res = re.findall(p, line)
-                    if res:
-                        for r in res:
-                            name = r[0]
-                            if name not in cur_names: cur_names.append(name)
-                for name in cur_names:
-                    if total_names.get(name):
-                        total_names[name]+=1
-                    else:
-                        total_names[name]=1
-                print(len(total_names))
-            f.close()
-
-    for name in total_names:
-        print(name + ':' + str(total_names[name]))
-
-def get_stamina(words_rows):
-    flexes = []
-    words = []
-    short = words_rows[0][0]
-    for w_row in words_rows:
-        if len(w_row[0]) < len(short):
-            short = w_row[0]
-        words.append(w_row[0])
-    if len(words) > 1:
-        while len(short) > 0:
-            flg_cut = False
-            for word in words:
-                while not short in word:
-                    short = short[:-1]
-                    flg_cut = True
-            if not flg_cut: break
-        else:
-            pass
-
-        if short:
-            for word in words:
-                flex = word[len(short):]
-                if flex not in flexes:
-                    flexes.append(flex)
-
-    return short, flexes
-
-def compare_flexes(short_arr, long_arr):
-    for sh_item in short_arr:
-        if not sh_item in long_arr:
-            return False
-    return True
-
 def step1_get_flexes(conn_stm):
+    def get_stamina(words_rows):
+        flexes = []
+        words = []
+        short = words_rows[0][0]
+        for w_row in words_rows:
+            if len(w_row[0]) < len(short):
+                short = w_row[0]
+            words.append(w_row[0])
+        if len(words) > 1:
+            while len(short) > 0:
+                flg_cut = False
+                for word in words:
+                    while not short in word:
+                        short = short[:-1]
+                        flg_cut = True
+                if not flg_cut: break
+            else:
+                pass
+
+            if short:
+                for word in words:
+                    flex = word[len(short):]
+                    if flex not in flexes:
+                        flexes.append(flex)
+
+        return short, flexes
+
+    def compare_flexes(short_arr, long_arr):
+        for sh_item in short_arr:
+            if not sh_item in long_arr:
+                return False
+        return True
 
     c = conn_stm.cursor()
     new_fam_id = c.execute("SELECT MAX(flexFamID) FROM baseForms").fetchone()[0]
@@ -582,6 +559,8 @@ def step7_get_f_measure(conn):
 def step8_count_distances_test_2(conn, f_ag_path, f_rbc_path, conn_stm):
 
     c = conn.cursor()
+    c.execute("UPDATE similarity SET sim2=-1")
+    conn.commit()
     rbc_texts = []
     ag_texts = []
     time_ranges = [[13000,14500]]
@@ -674,11 +653,14 @@ def step12_print_timerange_headers(conn):
 
 
 
-dbPath = r'C:\Kovalenko\data_center\dbases\news.db'
+# dbPath = r'C:\Kovalenko\data_center\dbases\news.db'
+dbPath = "C:/my_folder/news/news.db"
 dbPath_rbc = r'C:\Kovalenko\data_center\dbases\mediaLinks.db'
 dbStaminas = r'C:\Kovalenko\data_center\dbases\staminas.db'
-f_ag_path = 'C:/Kovalenko/news/agences_texts/news/'
-f_rbc_path = 'C:/Kovalenko/news/rbc_texts/'
+#f_ag_path = 'C:/Kovalenko/news/agences_texts/news/'
+f_rbc_path = 'C:/my_folder/news/test_folder/rbc_texts/'
+#f_rbc_path = 'C:/Kovalenko/news/rbc_texts/'
+f_ag_path = 'C:/my_folder/news/test_folder/agences_texts/'
 test_path1 = 'C:/Kovalenko/news/4832245656598281125.txt'
 test_path2 = 'C:/Kovalenko/news/44741.txt'
 
@@ -693,9 +675,9 @@ conn_rbc = lite.connect(dbPath_rbc)
 # step5_count_distances_test(conn,f_ag_path,f_rbc_path,conn_stm)
 # step6_prepair_similarity(conn)
 # step7_get_f_measure(conn)
-# step8_count_distances_test_2(conn,f_ag_path,f_rbc_path,conn_stm)
+step8_count_distances_test_2(conn,f_ag_path,f_rbc_path,conn_stm)
 # step10_fill_rbc_headers_sizes(conn)
-step11_fill_ag_sizes(conn)
+# step11_fill_ag_sizes(conn)
 #step12_print_timerange_headers(conn)
 
 # path = 'C:/Kovalenko/news/agences_texts/news/1/6426739333120244601.txt'
